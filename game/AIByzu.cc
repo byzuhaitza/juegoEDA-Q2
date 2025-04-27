@@ -24,6 +24,7 @@ struct PLAYER_NAME : public Player {
 
   const vector<Dir> direcciones = {BOTTOM, RIGHT, TOP, LEFT};
 
+
   Dir vuelta(Dir d) { //si tengo up me devuelve down
     if (d == BOTTOM) return TOP;
     if (d == TOP) return BOTTOM;
@@ -38,14 +39,16 @@ struct PLAYER_NAME : public Player {
     else return camino_retroceso(path, ini, act + vuelta(d));
   }
 
-  Dir mover_jugadores(int id, Pos p) {
+  Dir mover_jugadores(int id, Pos p, Unit u) {
     queue<Pos> bfs; //camino
     map<Pos, Dir> camino; //posicion en la que estoy y de que direccion vengo
     camino[p] = NONE; //primera posicion, direccion none (limite)
     bfs.push(p); //primera pos
     bool hay_ciudad = false; //esto aqui o dentro del if??????????????????????????
     bool hay_camino = false; 
-    Pos ciudad, cam;
+    Pos ciudad, cam, inm;
+    int inmediato = 0;
+    bool pref = false;
     while (not bfs.empty()) {
         Pos ahora = bfs.front();
         bfs.pop();
@@ -54,9 +57,22 @@ struct PLAYER_NAME : public Player {
         for (int i = 0; i < 4; ++i) { //las 4 direcciones posibles
             Pos nueva = ahora + direcciones[i];
             Cell celda = cell(nueva);
-            if (pos_ok(nueva) and celda.type != WALL and camino.find(nueva) == camino.end()) { //no pared
+            if (pos_ok(nueva) and celda.type != WALL and camino.find(nueva) == camino.end() and !pref) { //no pared
                 //cerr << "+++++++++++++++++++++++++++++++++++++++++++ ACTUAL " << nueva << endl;
-        
+                
+                if(inmediato < 4) {
+                    cerr << "+++++++++++++++++++++++++++++++++++++++++++ INMEDIATO " << inmediato << endl;
+                    if (celda.unit_id != -1 and celda.unit_id != me()) { //enemigo
+                        inm = nueva;
+                        pref = true;
+                    }
+                    else if (celda.mask and !u.immune and !u.mask) {
+                        inm = nueva;
+                        pref = true;
+                    }
+                    ++inmediato;
+                }
+
                 if (celda.type == CITY and city_owner(celda.city_id) != me()) { //si es una ciudad y esta conquistado por alguien que no soy yo
                     hay_ciudad = true;
                     ciudad = nueva;
@@ -74,7 +90,10 @@ struct PLAYER_NAME : public Player {
                 camino[nueva] = direcciones[i];
             }
         }
-        if (hay_ciudad) {
+        if (pref) {
+            return camino_retroceso(camino, p, inm);
+        }
+        else if (hay_ciudad) {
             //cerr << "--------------------------------------------- OKKKK " << nueva << endl;
             return camino_retroceso(camino, p, ciudad);
         }
@@ -98,7 +117,7 @@ struct PLAYER_NAME : public Player {
 
         Unit u = unit(id);
         Pos p = u.pos;
-        Dir d = mover_jugadores(id, p);
+        Dir d = mover_jugadores(id, p, u);
         //cerr << "------------------------ dir " << d << "- posicion " << p <<endl;
         move(id, d);
     }
