@@ -39,6 +39,35 @@ struct PLAYER_NAME : public Player {
     else return camino_retroceso(path, ini, act + vuelta(d));
   }
 
+  Dir buscar_direccion_ciudad(Pos ahora, int ciudad_id) {
+    queue<Pos> bfs;
+    map<Pos, Dir> camino;
+    bfs.push(ahora);
+    camino[ahora] = NONE;
+
+    while (!bfs.empty()) {
+        Pos actual = bfs.front();
+        bfs.pop();
+
+        for (int i = 0; i < 4; ++i) {
+            Pos nueva = actual + direcciones[i];
+            if (pos_ok(nueva) && camino.find(nueva) == camino.end()) {
+                Cell celda = cell(nueva);
+                if (celda.type == PATH) {
+                    camino[nueva] = direcciones[i];
+                    bfs.push(nueva);
+                }
+                if (celda.type == CITY && city_owner(celda.city_id) != me() && celda.city_id == ciudad_id) {
+                    // Encontramos la ciudad, devolvemos la dirección hacia ella
+                    return camino_retroceso(camino, ahora, nueva);
+                }
+            }
+        }
+    }
+    return NONE;
+}
+
+
   Dir mover_jugadores(int id, Pos p, Unit u) {
     queue<Pos> bfs; //camino
     map<Pos, Dir> camino; //posicion en la que estoy y de que direccion vengo
@@ -58,10 +87,9 @@ struct PLAYER_NAME : public Player {
             Pos nueva = ahora + direcciones[i];
             Cell celda = cell(nueva);
             if (pos_ok(nueva) and celda.type != WALL and camino.find(nueva) == camino.end() and !pref) { //no pared
-                //cerr << "+++++++++++++++++++++++++++++++++++++++++++ ACTUAL " << nueva << endl;
+                //cerr << "+++++++++++++++++++++++++++++++++++++++++++ pos " << nueva << endl;
                 
                 if(inmediato < 4) {
-                    cerr << "+++++++++++++++++++++++++++++++++++++++++++ INMEDIATO " << inmediato << endl;
                     if (celda.unit_id != -1 and celda.unit_id != me()) { //enemigo
                         inm = nueva;
                         pref = true;
@@ -79,11 +107,20 @@ struct PLAYER_NAME : public Player {
                 }
                 else if (celda.type == PATH) {
                     Path pat = path(celda.path_id);
-                    if (path_owner(celda.path_id) != me() or (city_owner(pat.first.first) != me() or city_owner(pat.first.second))) {
-                        //el path no es mio o alguna de las ciudades de los extremos del path no es mia
+                    if (path_owner(celda.path_id) != me()) {
+                        //el path no es mio
                         hay_camino = true; 
                         cam = nueva;
-
+                    }
+                    else if (city_owner(pat.first.first) != me() and city_owner(pat.first.second) != me()) {
+                        //funcion
+                    }
+                    else if (city_owner(pat.first.first) != me()) {
+                        return buscar_direccion_ciudad(ahora, pat.first.first);
+                    }
+                    
+                    else if (city_owner(pat.first.second) != me()) {
+                        return buscar_direccion_ciudad(ahora, pat.first.second);
                     }
                 }
                 bfs.push(nueva);
