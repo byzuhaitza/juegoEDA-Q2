@@ -78,6 +78,8 @@ struct PLAYER_NAME : public Player {
     Pos ciudad, cam, inm;
     int inmediato = 0;
     bool pref = false;
+    bool pref1 = false;
+    Dir ciudad1 = NONE;
     while (not bfs.empty()) {
         Pos ahora = bfs.front();
         bfs.pop();
@@ -86,7 +88,7 @@ struct PLAYER_NAME : public Player {
         for (int i = 0; i < 4; ++i) { //las 4 direcciones posibles
             Pos nueva = ahora + direcciones[i];
             Cell celda = cell(nueva);
-            if (pos_ok(nueva) and celda.type != WALL and camino.find(nueva) == camino.end() and !pref) { //no pared
+            if (pos_ok(nueva) and celda.type != WALL and camino.find(nueva) == camino.end() and !pref and !pref1) { //no pared
                 //cerr << "+++++++++++++++++++++++++++++++++++++++++++ pos " << nueva << endl;
                 
                 if(inmediato < 4) {
@@ -116,11 +118,13 @@ struct PLAYER_NAME : public Player {
                         //funcion
                     }
                     else if (city_owner(pat.first.first) != me()) {
-                        return buscar_direccion_ciudad(ahora, pat.first.first);
+                        ciudad1 =  buscar_direccion_ciudad(ahora, pat.first.first);
+                        pref1 = true;
                     }
                     
                     else if (city_owner(pat.first.second) != me()) {
-                        return buscar_direccion_ciudad(ahora, pat.first.second);
+                        ciudad1 =  buscar_direccion_ciudad(ahora, pat.first.second);
+                        pref1 = true;
                     }
                 }
                 bfs.push(nueva);
@@ -129,6 +133,9 @@ struct PLAYER_NAME : public Player {
         }
         if (pref) {
             return camino_retroceso(camino, p, inm);
+        }
+        else if (pref1) {
+            return ciudad1;
         }
         else if (hay_ciudad) {
             //cerr << "--------------------------------------------- OKKKK " << nueva << endl;
