@@ -24,7 +24,6 @@ struct PLAYER_NAME : public Player {
 
   const vector<Dir> direcciones = {BOTTOM, RIGHT, TOP, LEFT};
 
-
   Dir vuelta(Dir d) { //si tengo up me devuelve down
     if (d == BOTTOM) return TOP;
     if (d == TOP) return BOTTOM;
@@ -39,116 +38,208 @@ struct PLAYER_NAME : public Player {
     else return camino_retroceso(path, ini, act + vuelta(d));
   }
 
-  Dir buscar_direccion_ciudad(Pos ahora/*, int ciudad_id*/) {
+  pair<Dir, int> ciudad_cercana(int id, Pos p) {
     queue<Pos> bfs;
     map<Pos, Dir> camino;
-    bfs.push(ahora);
-    camino[ahora] = NONE;
-    //cerr << "---------------------------------- calcula " << ahora << endl;
-    while (!bfs.empty()) {
-        Pos actual = bfs.front();
-        bfs.pop();
+    camino[p] = NONE;
+    bfs.push(p);
 
-        for (int i = 0; i < 4; ++i) {
-            Pos nueva = actual + direcciones[i];
-            if (pos_ok(nueva) and camino.find(nueva) == camino.end()) {
-                Cell celda = cell(nueva);
-                if (celda.type == PATH or celda.type == CITY) {
-                    camino[nueva] = direcciones[i];
-                    bfs.push(nueva);
-                    if (celda.type == CITY and city_owner(celda.city_id) != me()/* && celda.city_id == ciudad_id*/) {
-                        // Encontramos la ciudad, devolvemos la dirección hacia ella
-                        //cerr << "---------------------------------- termina " << nueva << endl;
-                        return camino_retroceso(camino, ahora, nueva);
-                    }
-                }
-            }
-        }
-    }
-    return NONE;
-}
+    Pos ciudad;
+    //bool hay_ciudad = false;
 
+    int distancia = 0;  // Nivel (distancia en pasos)
 
-  Dir mover_jugadores(int id, Pos p, Unit u) {
-    queue<Pos> bfs; //camino
-    map<Pos, Dir> camino; //posicion en la que estoy y de que direccion vengo
-    camino[p] = NONE; //primera posicion, direccion none (limite)
-    bfs.push(p); //primera pos
-    bool hay_ciudad = false; //esto aqui o dentro del if??????????????????????????
-    bool hay_camino = false; 
-    Pos ciudad, cam, inm;
-    int inmediato = 0;
-    bool pref = false;
-    bool pref1 = false;
-    Dir ciudad1 = NONE;
     while (not bfs.empty()) {
-        Pos ahora = bfs.front();
-        bfs.pop();
+        int nivel_size = bfs.size();  // Número de nodos en este nivel
 
-        //cerr << "+++++++++++++++++++++++++++++++++++++++++++ ACTUAL " << ahora << endl;
-        for (int i = 0; i < 4; ++i) { //las 4 direcciones posibles
-            Pos nueva = ahora + direcciones[i];
-            Cell celda = cell(nueva);
-            if (pos_ok(nueva) and celda.type != WALL and camino.find(nueva) == camino.end() and !pref and !pref1 and !hay_ciudad and !hay_camino) { //no pared
-                //cerr << "+++++++++++++++++++++++++++++++++++++++++++ pos " << nueva << endl;
-                
-                if(inmediato < 4) {
-                    if (celda.unit_id != -1 and celda.unit_id != me()) { //enemigo
-                        inm = nueva;
-                        pref = true;
-                    }
-                    else if (celda.mask and !u.immune and !u.mask) {
-                        inm = nueva;
-                        pref = true;
-                    }
-                    ++inmediato;
-                }
+        for (int i = 0; i < nivel_size; ++i) {
+            Pos ahora = bfs.front();
+            bfs.pop();
 
-                if (celda.type == CITY and city_owner(celda.city_id) != me()) { //si es una ciudad y esta conquistado por alguien que no soy yo
-                    hay_ciudad = true;
-                    ciudad = nueva;
+            for (int j = 0; j < 4; ++j) {
+                Pos nueva = ahora + direcciones[j];
+                Cell celda = cell(nueva);
+                if (pos_ok(nueva) and celda.type != WALL and camino.find(nueva) == camino.end()) {
+                    if (celda.type == CITY and city_owner(celda.city_id) != me()) {
+                        //hay_ciudad = true;
+                        ciudad = nueva;
+                        // Al encontrar, devolvemos inmediatamente: dirección inicial y distancia +1 (porque estamos a punto de entrar en esa casilla)
+                        return {camino_retroceso(camino, p, ciudad), distancia + 1};
+                    }
+                    bfs.push(nueva);
+                    camino[nueva] = direcciones[j];
                 }
-                else if (celda.type == PATH) {
-                    Path pat = path(celda.path_id);
-                    if (path_owner(celda.path_id) != me()) {
-                        //el path no es mio
-                        hay_camino = true; 
-                        cam = nueva;
-                    }
-                    else if (city_owner(pat.first.first) != me() and city_owner(pat.first.second) != me()) {
-                        ciudad1 = buscar_direccion_ciudad(ahora);
-                        pref1 = true;
-                    }
-                    else if (city_owner(pat.first.first) != me()) {
-                        ciudad1 =  buscar_direccion_ciudad(ahora/*, pat.first.first*/);
-                        pref1 = true;
-                    }
-                    
-                    else if (city_owner(pat.first.second) != me()) {
-                        ciudad1 =  buscar_direccion_ciudad(ahora/*pat.first.second*/);
-                        pref1 = true;
-                    }
-                }
-                bfs.push(nueva);
-                camino[nueva] = direcciones[i];
             }
         }
-        if (pref) {
-            return camino_retroceso(camino, p, inm);
-        }
-        else if (pref1) {
-            return ciudad1;
-        }
-        else if (hay_ciudad) {
-            //cerr << "--------------------------------------------- OKKKK " << nueva << endl;
-            return camino_retroceso(camino, p, ciudad);
-        }
-        else if (hay_camino) {
-            return camino_retroceso(camino, p, cam);
-        }
+
+        distancia++;  // Avanzamos al siguiente nivel
     }
-    return NONE;
-  }
+
+    return {NONE, -1};  // Si no se encontró ciudad, devolvemos -1 o lo que prefieras como valor inválido
+ }
+
+ pair<Dir, int> camino_cercano(int id, Pos p) {
+    queue<Pos> bfs;
+    map<Pos, Dir> camino;
+    camino[p] = NONE;
+    bfs.push(p);
+
+    Pos path;
+    //bool hay_ciudad = false;
+
+    int distancia = 0;  // Nivel (distancia en pasos)
+
+    while (not bfs.empty()) {
+        int nivel_size = bfs.size();  // Número de nodos en este nivel
+
+        for (int i = 0; i < nivel_size; ++i) {
+            Pos ahora = bfs.front();
+            bfs.pop();
+
+            for (int j = 0; j < 4; ++j) {
+                Pos nueva = ahora + direcciones[j];
+                Cell celda = cell(nueva);
+                if (pos_ok(nueva) and celda.type != WALL and camino.find(nueva) == camino.end()) {
+                    if (celda.type == PATH and path_owner(celda.path_id) != me()) {
+                        //hay_ciudad = true;
+                        path = nueva;
+                        // Al encontrar, devolvemos inmediatamente: dirección inicial y distancia +1 (porque estamos a punto de entrar en esa casilla)
+                        return {camino_retroceso(camino, p, path), distancia + 1};
+                    }
+                    bfs.push(nueva);
+                    camino[nueva] = direcciones[j];
+                }
+            }
+        }
+
+        distancia++;  // Avanzamos al siguiente nivel
+    }
+
+    return {NONE, -1};
+ }
+
+ pair<Dir, int> enemigo_muy_debil(int id, Pos p, Unit u) {
+    queue<Pos> bfs;
+    map<Pos, Dir> camino;
+    camino[p] = NONE;
+    bfs.push(p);
+
+    Pos enemigo;
+    //bool hay_ciudad = false;
+
+    int distancia = 0;  // Nivel (distancia en pasos)
+
+    while (not bfs.empty()) {
+        int nivel_size = bfs.size();  // Número de nodos en este nivel
+
+        for (int i = 0; i < nivel_size; ++i) {
+            Pos ahora = bfs.front();
+            bfs.pop();
+
+            for (int j = 0; j < 4; ++j) {
+                Pos nueva = ahora + direcciones[j];
+                Cell celda = cell(nueva);
+                if (pos_ok(nueva) and celda.type != WALL and camino.find(nueva) == camino.end()) {
+                    if (celda.unit_id != -1 and celda.unit_id != me()) {
+                        //hay_ciudad = true;
+                        Unit e = unit(celda.unit_id);
+                        if(e.health <= 40 and u.health > e.health+40) {
+                            enemigo = nueva;
+                            // Al encontrar, devolvemos inmediatamente: dirección inicial y distancia +1 (porque estamos a punto de entrar en esa casilla)
+                            return {camino_retroceso(camino, p, enemigo), distancia + 1};
+                        }
+                    }
+                    bfs.push(nueva);
+                    camino[nueva] = direcciones[j];
+                }
+            }
+        }
+
+        distancia++;  // Avanzamos al siguiente nivel
+    }
+
+    return {NONE, -1};
+ }
+
+ pair<Dir, int> enemigo_muy_cerca(int id, Pos p) {
+    queue<Pos> bfs;
+    map<Pos, Dir> camino;
+    camino[p] = NONE;
+    bfs.push(p);
+
+    Pos enemigo;
+    //bool hay_ciudad = false;
+
+    int distancia = 0;  // Nivel (distancia en pasos)
+
+    while (not bfs.empty()) {
+        int nivel_size = bfs.size();  // Número de nodos en este nivel
+
+        for (int i = 0; i < nivel_size; ++i) {
+            Pos ahora = bfs.front();
+            bfs.pop();
+
+            for (int j = 0; j < 4; ++j) {
+                Pos nueva = ahora + direcciones[j];
+                Cell celda = cell(nueva);
+                if (pos_ok(nueva) and celda.type != WALL and camino.find(nueva) == camino.end()) {
+                    if (celda.unit_id != -1 and celda.unit_id != me()) {
+                        //hay_ciudad = true;
+                        enemigo = nueva;
+                         // Al encontrar, devolvemos inmediatamente: dirección inicial y distancia +1 (porque estamos a punto de entrar en esa casilla)
+                        return {camino_retroceso(camino, p, enemigo), distancia + 1};
+                    }
+                    bfs.push(nueva);
+                    camino[nueva] = direcciones[j];
+                }
+            }
+        }
+
+        distancia++;  // Avanzamos al siguiente nivel
+    }
+
+    return {NONE, -1};
+ }
+
+ pair<Dir, int> mascarilla_muy_cerca(int id, Pos p) {
+    queue<Pos> bfs;
+    map<Pos, Dir> camino;
+    camino[p] = NONE;
+    bfs.push(p);
+
+    Pos mask;
+
+    int distancia = 0;  // Nivel (distancia en pasos)
+
+    while (not bfs.empty()) {
+        int nivel_size = bfs.size();  // Número de nodos en este nivel
+
+        for (int i = 0; i < nivel_size; ++i) {
+            Pos ahora = bfs.front();
+            bfs.pop();
+
+            for (int j = 0; j < 4; ++j) {
+                Pos nueva = ahora + direcciones[j];
+                Cell celda = cell(nueva);
+                if (pos_ok(nueva) and celda.type != WALL and camino.find(nueva) == camino.end()) {
+                    if (celda.mask) {
+                        //hay_ciudad = true;
+                        mask = nueva;
+                        // Al encontrar, devolvemos inmediatamente: dirección inicial y distancia +1 (porque estamos a punto de entrar en esa casilla)
+                        return {camino_retroceso(camino, p, mask), distancia + 1};
+                    }
+                    bfs.push(nueva);
+                    camino[nueva] = direcciones[j];
+                }
+            }
+        }
+
+        distancia++;  // Avanzamos al siguiente nivel
+    }
+
+    return {NONE, -1};
+ }
+
 
   /**
    * Play method, invoked once per each round.
@@ -163,12 +254,40 @@ struct PLAYER_NAME : public Player {
 
         Unit u = unit(id);
         Pos p = u.pos;
-        Dir d = mover_jugadores(id, p, u);
-        //cerr << "------------------------ dir " << d << "- posicion " << p <<endl;
-        move(id, d);
-    }
+        cerr << "+++++++++++++++++++++++++++++++++++++++++++ enemigo antes " << endl;
+        pair<Dir, int> enemigo_adyacente = enemigo_muy_cerca(id, p); //compararlo con 1, que es adyacente
+        cerr << "+++++++++++++++++++++++++++++++++++++++++++ enemigo despues" << endl;
+        
+        if (enemigo_adyacente.second == 1) move(id, enemigo_adyacente.first);
+        else {
+            pair<Dir, int> ciudad_mas_cercana = ciudad_cercana(id, p);
+            pair<Dir, int> camino_mas_cercano = camino_cercano(id, p);
+            pair<Dir, int> enemigo_debil = enemigo_muy_debil(id, p, u);
 
-    
+            Dir d1 = ciudad_mas_cercana.first;
+            Dir d2 = camino_mas_cercano.first;
+            Dir d4 = enemigo_debil.first;
+
+            int dis1 = ciudad_mas_cercana.second;
+            int dis2 = camino_mas_cercano.second;
+            int dis4 = enemigo_debil.second; 
+
+            if (not u.immune) {
+                pair<Dir, int> mascarilla_adyacente = mascarilla_muy_cerca(id, p);  //compararlo con 1, que es adyacente
+                if (mascarilla_adyacente.second == 1) move(id, mascarilla_adyacente.first);
+            }
+            else {
+                if (dis4 <= 3) move(id, d4);
+                else {
+                    if (dis1 <= dis2) move(id, d1);
+                    else move(id, d2);
+                } 
+            }
+
+
+        }
+        cerr << "--------------------------------- unidad terminada"<< endl;
+    }
 
   }
 

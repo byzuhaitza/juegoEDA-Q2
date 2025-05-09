@@ -1,0 +1,10 @@
+info: seed 6397
+info: loading game
+info: loaded game
+info: loading player Byzuhaitza
+info: loading player Byzuhaitza
+info: loading player Byzuhaitza
+info: loading player Byzuhaitza
+info: players loaded
+info: start round 0
+info:     start player 0
