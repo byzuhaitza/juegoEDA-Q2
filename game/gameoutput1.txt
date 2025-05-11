@@ -1,10 +1,7 @@
-info: seed 6397
+info: seed 2954
 info: loading game
 info: loaded game
 info: loading player Byzuhaitza
-info: loading player Byzuhaitza
-info: loading player Byzuhaitza
-info: loading player Byzuhaitza
-info: players loaded
-info: start round 0
-info:     start player 0
+info: loading player Hira
+error: Player Hira not registered.
+Game: Registry.cc:19: static Player* Registry::new_player(std::string): Assertion `it != reg_->end()' failed.

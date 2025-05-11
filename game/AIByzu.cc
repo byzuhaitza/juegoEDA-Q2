@@ -1,10 +1,24 @@
 #include "Player.hh"
 
-#define PLAYER_NAME Byzuhaitza
+/**
+ * Write the name of your player and save this file
+ * with the same name and .cc extension.
+ */
+#define PLAYER_NAME Mandem_girl
 
 struct PLAYER_NAME : public Player {
-  static Player* factory () { return new PLAYER_NAME; }
 
+    /**
+     * Factory: returns a new instance of this class.
+     * Do not modify this function.
+     */
+  static Player* factory () { 
+    return new PLAYER_NAME; 
+  }
+
+  /**
+   * Types and attributes for your player can be defined here.
+   */
   const vector<Dir> direcciones = {BOTTOM, RIGHT, TOP, LEFT};
 
   Dir vuelta(Dir d) {
@@ -226,7 +240,7 @@ struct PLAYER_NAME : public Player {
           }
         }
       }
-      if (status(me()) >= 0.9) return;
+      if (status(me()) >= 0.95) return;
     }
   }
 };
